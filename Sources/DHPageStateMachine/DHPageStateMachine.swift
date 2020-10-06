@@ -1,6 +1,5 @@
 //
 //  PageStateMachine.swift
-//  ACCUPASS
 //
 //  Created by 賢瑭 何 on 2020/9/1.
 //  Copyright © 2020 accuvally. All rights reserved.
@@ -13,16 +12,16 @@ import RxCocoa
 // Usage: Let object which conform to PageStateObserverType & PageStateMachineOwner or separate the duty on two object at a time, and implement the machine register and apply state you want to handle. Don't forget to consider the retain cycle.
 
 // MARK: - Observer
-protocol DHPageStateObserverType: class {
+public protocol DHPageStateObserverType: class {
     var pageStateMachineOwner: DHPageStateMachineOwner! { get }
 }
 
-protocol DHPageStateMachineOwner {
+public protocol DHPageStateMachineOwner {
     var pageStateMachine: DHPageStateMachineType { get }
 }
 
 // MARK: - Oberservee
-protocol DHPageStateMachineType {
+public protocol DHPageStateMachineType {
     typealias StateHandler = (DHPageState) -> Void
     var isOpen: Bool { get }
     var state: DHPageState { get }
@@ -38,19 +37,19 @@ protocol DHPageStateMachineType {
 }
 
 extension DHPageStateMachineType {
-    var asConcrete: DHPageStateMachine {
+    public var asConcrete: DHPageStateMachine {
         self as! DHPageStateMachine
     }
 }
 
 extension DHPageStateMachineType where Self: DHPageStateMachine {
-    func open() {
+    public func open() {
         open = true
     }
     /**
         If you give and error, and the machine will switch to error state and stop receiving any state until you call open()
     */
-    func shutdown(error: Error? = nil) {
+    public func shutdown(error: Error? = nil) {
         if let err = error {
             switchState(to: DHPageState(pageState: .error(err)))
         }
@@ -58,21 +57,21 @@ extension DHPageStateMachineType where Self: DHPageStateMachine {
     }
 }
 
-class DHPageStateMachine: DHPageStateMachineType {
+open class DHPageStateMachine: DHPageStateMachineType {
 
     private var handlers: [DHPageState: StateHandler] = [:]
 
-    var error: Error? {
+    public var error: Error? {
         self.state.error
     }
 
-    var isOpen: Bool {
+    public var isOpen: Bool {
         open
     }
 
     fileprivate var open: Bool = true
 
-    private(set) var state: DHPageState = .initial
+    public private(set) var state: DHPageState = .initial
 
     private var beforeAnyStateSwitch: StateHandler?
     private var afterAnyStateSwitch: StateHandler?
@@ -80,13 +79,13 @@ class DHPageStateMachine: DHPageStateMachineType {
     init() {
     }
 
-    weak var observer: DHPageStateObserverType?
+    public weak var observer: DHPageStateObserverType?
 
-    func register(pageStateObserver: DHPageStateObserverType) {
+    public func register(pageStateObserver: DHPageStateObserverType) {
         self.observer = pageStateObserver
     }
 
-    func switchState(to state: DHPageState) {
+    public func switchState(to state: DHPageState) {
         if open {
             DispatchQueue.main.async {
                 if self.state == state { return }
@@ -98,22 +97,22 @@ class DHPageStateMachine: DHPageStateMachineType {
         }
     }
 
-    func applyAnyStateWillSwitch(handler: @escaping StateHandler) {
+    public func applyAnyStateWillSwitch(handler: @escaping StateHandler) {
         self.beforeAnyStateSwitch = nil
         self.beforeAnyStateSwitch = handler
     }
 
-    func apply(switchTo state: DHPageState, handler: @escaping StateHandler) {
+    public func apply(switchTo state: DHPageState, handler: @escaping StateHandler) {
         handlers[state] = nil
         handlers[state] = handler
     }
 
-    func applyAnyStateDidSwitch(handler: @escaping StateHandler) {
+    public func applyAnyStateDidSwitch(handler: @escaping StateHandler) {
         self.afterAnyStateSwitch = nil
         self.afterAnyStateSwitch = handler
     }
 
-    func start() {
+    public func start() {
         open = true
         switchState(to: .initialLoading)
     }
@@ -126,20 +125,20 @@ class DHPageStateMachine: DHPageStateMachineType {
 // LoadingMore -> existing values + new values
 // Error -> existing values
 // Finish -> existing values
-struct DHPageState: CustomStringConvertible, Hashable {
+public struct DHPageState: CustomStringConvertible, Hashable {
 
-    static let initial = DHPageState(pageState: .initial)
-    static let initialLoading = DHPageState(pageState: .initialLoading)
-    static let loadingMore = DHPageState(pageState: .loadingMore)
-    static let loading = DHPageState(pageState: .loading)
-    static let empty = DHPageState(pageState: .empty)
-    static let finish = DHPageState(pageState: .finish)
-    static let noMore = DHPageState(pageState: .noMore)
-    static let error = DHPageState(pageState: .error(nil))
+    public static let initial = DHPageState(pageState: .initial)
+    public static let initialLoading = DHPageState(pageState: .initialLoading)
+    public static let loadingMore = DHPageState(pageState: .loadingMore)
+    public static let loading = DHPageState(pageState: .loading)
+    public static let empty = DHPageState(pageState: .empty)
+    public static let finish = DHPageState(pageState: .finish)
+    public static let noMore = DHPageState(pageState: .noMore)
+    public static let error = DHPageState(pageState: .error(nil))
 
-    let error: Error?
+    public let error: Error?
 
-    let state: DHPageStateOption
+    public let state: DHPageStateOption
 
     init(pageState: DHPageStateOption) {
         self.state = pageState
@@ -150,15 +149,15 @@ struct DHPageState: CustomStringConvertible, Hashable {
         }
     }
 
-    func hash(into hasher: inout Hasher) {
+    public func hash(into hasher: inout Hasher) {
         hasher.combine(description)
     }
 
-    static func == (lhs: DHPageState, rhs: DHPageState) -> Bool {
+    public static func == (lhs: DHPageState, rhs: DHPageState) -> Bool {
         "\(lhs.description)" == "\(rhs.description)"
     }
 
-    var description: String {
+    public var description: String {
         var identifier = ""
         switch state {
         case .initial:
@@ -181,7 +180,7 @@ struct DHPageState: CustomStringConvertible, Hashable {
         return identifier
     }
 
-    enum DHPageStateOption {
+    public enum DHPageStateOption {
 
         case initial, initialLoading, loadingMore, loading, empty, finish, noMore, error(Error?)
     }
@@ -189,4 +188,12 @@ struct DHPageState: CustomStringConvertible, Hashable {
 
 extension DHPageStateMachine: ReactiveCompatible {
 
+}
+
+extension Reactive where Base: DHPageStateMachine {
+    var state: Binder<DHPageState> {
+        Binder(self.base, scheduler: MainScheduler.instance, binding: { (machine, state) in
+            machine.switchState(to: state)
+        })
+    }
 }

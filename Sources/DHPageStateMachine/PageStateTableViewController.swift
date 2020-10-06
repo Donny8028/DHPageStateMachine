@@ -1,21 +1,13 @@
 //
 //  PageStateTableViewController.swift
-//  ACCUPASS
 //
 //  Created by 賢瑭 何 on 2020/9/9.
 //  Copyright © 2020 accuvally. All rights reserved.
 //
 
 import UIKit
-
-protocol UITableViewContainer: class {
-    var tableView: UITableView { get }
-}
-
-protocol CellLoadable {
-    func startLoading()
-    func stopLoading()
-}
+import RxSwift
+import RxCocoa
 
 protocol PageStateTableViewControllerType: UITableViewContainer, UITableViewDataSource {
     var isRefreshingAnimatingPair: Bool { get set }
@@ -26,46 +18,46 @@ protocol PageStateTableViewControllerType: UITableViewContainer, UITableViewData
 }
 
 // To dodge the generic with objc protocol can't implement both.
-class ACTableViewController: UIViewController {
+open class TableViewController: UIViewController {
 }
 
-extension ACTableViewController: UITableViewDelegate {
+extension TableViewController: UITableViewDelegate {
     // Cell need to conform SkeletonLoadable
-    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+    open func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         cell.layoutIfNeeded()
     }
 
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    open func scrollViewDidScroll(_ scrollView: UIScrollView) {
     }
 
-    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+    open func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
     }
 }
 // TODO: - Need empty state view support
-class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableViewController, PageStateTableViewControllerType, DHPageStateObserverType where T.ViewModel == U {
+open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableViewController, PageStateTableViewControllerType, DHPageStateObserverType where T.ViewModel == U {
 
 
-    var pageStateMachineOwner: DHPageStateMachineOwner! {
+    public var pageStateMachineOwner: DHPageStateMachineOwner! {
         controller as? DHPageStateMachineOwner
     }
 
-    var isRefreshingAnimatingPair: Bool = false
+    public var isRefreshingAnimatingPair: Bool = false
 
-    var pageState: DHPageState {
+    public var pageState: DHPageState {
         pageStateMachineOwner.pageStateMachine.state
     }
 
-    var pageStateMachine: DHPageStateMachineType {
+    public var pageStateMachine: DHPageStateMachineType {
         pageStateMachineOwner.pageStateMachine
     }
 
-    let controller: T
+    public let controller: T
 
-    var viewModel: U {
+    public var viewModel: U {
         controller.viewModel
     }
 
-    lazy var footerActivityIndicatorView: UIActivityIndicatorView = {
+    public lazy var footerActivityIndicatorView: UIActivityIndicatorView = {
         let refresher: UIActivityIndicatorView
         if #available(iOS 13.0, *) {
             refresher = UIActivityIndicatorView(style: .medium)
@@ -77,16 +69,16 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
         return refresher
     }()
 
-    init(controller: T) {
+    public init(controller: T) {
         self.controller = controller
         super.init(nibName: nil, bundle: nil)
     }
 
-    required init?(coder: NSCoder) {
+    required public init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private(set) lazy var tableView: UITableView = {
+    public private(set) lazy var tableView: UITableView = {
         let tableView = UITableView()
         tableView.delegate = self
         tableView.dataSource = self
@@ -96,13 +88,13 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
     lazy var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
         refreshControl.backgroundColor = UIColor.clear
-//        refreshControl.tintColor = UIColor.init(netHex: ACConstants.Color.CisColor)
+        refreshControl.tintColor = UIColor.black
         tableView.refreshControl = refreshControl
         refreshControl.addTarget(self, action: #selector(fetchData), for: .valueChanged)
         return refreshControl
     }()
 
-    override func viewDidLoad() {
+    open override func viewDidLoad() {
         super.viewDidLoad()
         setupTableView()
         setupPageStateMachine()
@@ -133,7 +125,7 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
     /***
         Register state machine default behavior, and can override by calling machine apply functions
      */
-    func setupPageStateMachine() {
+    public func setupPageStateMachine() {
         pageStateMachine.register(pageStateObserver: self)
         pageStateMachine.applyAnyStateWillSwitch(handler: { [weak self] _ in
             self?.emptyView(isHidden: true)
@@ -187,14 +179,14 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
         To Handle the state error, override this method.
         The default behavior is pop alert and show the parsed error.
      */
-    func handleStateError(_ error: Error) {
+    public func handleStateError(_ error: Error) {
         let alert = UIAlertController(title: "錯誤", message: "\(error)", preferredStyle: .alert)
         let confirm = UIAlertAction(title: "確定", style: .default, handler: nil)
         alert.addAction(confirm)
         present(alert, animated: true, completion: nil)
     }
 
-    func emptyView(isHidden: Bool) {
+    public func emptyView(isHidden: Bool) {
         if let subviews = tableView.backgroundView?.subviews.filter({ !($0 is UIActivityIndicatorView) }) {
             subviews.forEach({
                 $0.isHidden = isHidden
@@ -202,7 +194,7 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
         }
     }
 
-    func startLoading() {
+    public func startLoading() {
         controller.beginRefreshList.accept(())
     }
 
@@ -210,19 +202,19 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
         pageStateMachine.switchState(to: .loading)
     }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    open func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func numberOfSections(in tableView: UITableView) -> Int {
+    open func numberOfSections(in tableView: UITableView) -> Int {
         1
     }
 
-     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    open func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         pageState == .initial || pageState == .initialLoading ? 10 : viewModel.list.count
     }
 
-    override func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    open override func scrollViewDidScroll(_ scrollView: UIScrollView) {
         guard scrollView.contentSize.height >= scrollView.bounds.height else { return }
         let bottomY = scrollView.contentSize.height - scrollView.bounds.height
         let bottomInsets = max(0, (scrollView.contentOffset.y - bottomY))
@@ -230,7 +222,7 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
         scrollView.contentInset.bottom = pageState == .noMore ? 0.0 : limitBottom
     }
 
-    override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+    open override func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         if pageState == .noMore { return }
         guard scrollView.contentSize.height >= scrollView.bounds.height else { return }
         let bottomY = scrollView.contentSize.height - scrollView.bounds.height
@@ -239,7 +231,7 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
         }
     }
 
-    override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+    open override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         super.tableView(tableView, willDisplay: cell, forRowAt: indexPath)
         let loadableCell = cell as? CellLoadable
         if pageState == .initial || pageState == .initialLoading {
@@ -252,14 +244,14 @@ class PageStateTableViewController<T: DHPageStateControllerType, U>: ACTableView
 
 extension PageStateTableViewController {
 
-    var isHasMore: Bool {
+    public var isHasMore: Bool {
         if pageStateMachine.state == .loading {
             return true
         }
         return viewModel.model?.isHasMore == true || viewModel.model == nil
     }
 
-    func pullToRefreshAnimating() {
+    public func pullToRefreshAnimating() {
         if tableView.contentOffset.y == -tableView.contentInset.top {
             self.isRefreshingAnimatingPair = true
             UIView.animate(withDuration: 0.1, delay: 0.1, options: .beginFromCurrentState, animations: {
@@ -270,7 +262,7 @@ extension PageStateTableViewController {
         }
     }
 
-    func stopAnimating() {
+    public func stopAnimating() {
         if isRefreshingAnimatingPair {
             self.isRefreshingAnimatingPair = false
             UIView.animate(withDuration: 0.3, delay: 0.0, options: .beginFromCurrentState, animations: {
@@ -285,5 +277,14 @@ extension PageStateTableViewController {
             self.footerActivityIndicatorView.stopAnimating()
             self.tableView.contentInset.bottom = 0
         }
+    }
+}
+
+
+extension Reactive where Base: UITableView {
+    var reload: Binder<Void> {
+        Binder(self.base, scheduler: MainScheduler.instance, binding: { (tableView, state) in
+            tableView.reloadData()
+        })
     }
 }

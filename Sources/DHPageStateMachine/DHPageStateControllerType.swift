@@ -1,6 +1,5 @@
 //
 //  PageStateControllerType.swift
-//  ACCUPASS
 //
 //  Created by 賢瑭 何 on 2020/9/21.
 //  Copyright © 2020 accuvally. All rights reserved.
@@ -15,7 +14,7 @@ public protocol Moreable {
     var listData: [Codable] { get set }
 }
 
-protocol DHPageStateControllerType {
+public protocol DHPageStateControllerType {
 
     associatedtype T
 
@@ -38,7 +37,7 @@ protocol DHPageStateControllerType {
 }
 // TODO: - Need auth check
 extension DHPageStateControllerType {
-    var refresh: Observable<Void> {
+    public var refresh: Observable<Void> {
         beginRefreshList
         .asObservable()
         .share()
@@ -47,12 +46,12 @@ extension DHPageStateControllerType {
 
 extension DHPageStateControllerType where Self: DHPageStateMachineOwner {
 
-    var load: () -> Observable<T> {
+    public var load: () -> Observable<T> {
         let count = viewModel.list.count
         return count > 0 ? (pageStateMachine.state == .loading ? getFirstLoad : self.getMoreLoad) : getFirstLoad
     }
 
-    var isHasMore: Bool {
+    public var isHasMore: Bool {
         if pageStateMachine.state == .loading {
             return true
         }
@@ -62,7 +61,7 @@ extension DHPageStateControllerType where Self: DHPageStateMachineOwner {
     /***
         Subscribe it when you care the no more state
      */
-    var noMoreObserver: Observable<DHPageState> {
+    public var noMoreObserver: Observable<DHPageState> {
         refresh
         .skipWhile({ self.isHasMore })
         .map { DHPageState.noMore }
@@ -71,7 +70,7 @@ extension DHPageStateControllerType where Self: DHPageStateMachineOwner {
     /***
         Wrapper Model change observer
      */
-    var dataObserver: Observable<DHPageState> {
+    public var dataObserver: Observable<DHPageState> {
         viewModel.modelRelay
         .asObservable()
         .skipUntil(beginRefreshList)
@@ -83,7 +82,7 @@ extension DHPageStateControllerType where Self: DHPageStateMachineOwner {
     /***
         Subscribe it when you has to calling api layer and handle load more.
      */
-    var loadObserver: Observable<T> {
+    public var loadObserver: Observable<T> {
         refresh
         .filter({ self.isHasMore })
         .flatMapLatest({
