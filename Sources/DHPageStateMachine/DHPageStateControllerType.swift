@@ -63,7 +63,7 @@ extension DHPageStateControllerType where Self: DHPageStateMachineOwner {
      */
     public var noMoreObserver: Observable<DHPageState> {
         refresh
-        .skipWhile({ self.isHasMore })
+        .filter({ self.isHasMore })
         .map { DHPageState.noMore }
     }
 
