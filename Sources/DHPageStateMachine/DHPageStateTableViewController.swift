@@ -9,7 +9,7 @@ import UIKit
 import RxSwift
 import RxCocoa
 
-protocol PageStateTableViewControllerType: UITableViewContainer, UITableViewDataSource {
+protocol DHPageStateTableViewControllerType: UITableViewContainer, UITableViewDataSource {
     var isRefreshingAnimatingPair: Bool { get set }
     var pageState: DHPageState { get }
     var pageStateMachine: DHPageStateMachineType { get }
@@ -34,7 +34,7 @@ extension TableViewController: UITableViewDelegate {
     }
 }
 // TODO: - Need empty state view support
-open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableViewController, PageStateTableViewControllerType, DHPageStateObserverType where T.ViewModel == U {
+open class DHPageStateTableViewController<T: DHPageStateControllerType, U>: TableViewController, DHPageStateTableViewControllerType, DHPageStateObserverType where T.ViewModel == U {
 
 
     public var pageStateMachineOwner: DHPageStateMachineOwner! {
@@ -133,7 +133,9 @@ open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableV
 
         pageStateMachine.applyAnyStateDidSwitch(handler: { [weak self] state in
             self?.tableView.isScrollEnabled = !(state == .initialLoading || state == .initial)
-            self?.stopAnimating()
+            if !(state == .initialLoading || state == .initial || state == .loading) {
+                self?.stopAnimating()
+            }
         })
 
         pageStateMachine.apply(switchTo: .initialLoading, handler: { [weak self] _ in
@@ -152,7 +154,7 @@ open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableV
 
         pageStateMachine.apply(switchTo: .empty, handler: { [weak self] _ in
             self?.emptyView(isHidden: false)
-            self?.tableView.reloadData()
+            self?.reloadData()
         })
 
         pageStateMachine.apply(switchTo: .finish, handler: { [weak self] _ in
@@ -160,7 +162,7 @@ open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableV
             if self?.isHasMore == true {
                 self?.footerActivityIndicatorView.stopAnimating()
             }
-            self?.tableView.reloadData()
+            self?.reloadData()
         })
 
         pageStateMachine.apply(switchTo: .noMore, handler: { [weak self] _ in
@@ -184,6 +186,10 @@ open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableV
         let confirm = UIAlertAction(title: "確定", style: .default, handler: nil)
         alert.addAction(confirm)
         present(alert, animated: true, completion: nil)
+    }
+
+    func reloadData() {
+        tableView.reloadData()
     }
 
     public func emptyView(isHidden: Bool) {
@@ -242,7 +248,7 @@ open class PageStateTableViewController<T: DHPageStateControllerType, U>: TableV
     }
 }
 
-extension PageStateTableViewController {
+extension DHPageStateTableViewController {
 
     public var isHasMore: Bool {
         if pageStateMachine.state == .loading {
@@ -251,11 +257,11 @@ extension PageStateTableViewController {
         return viewModel.model?.isHasMore == true || viewModel.model == nil
     }
 
-    public func pullToRefreshAnimating() {
+    func pullToRefreshAnimating() {
         if tableView.contentOffset.y == -tableView.contentInset.top {
             self.isRefreshingAnimatingPair = true
             UIView.animate(withDuration: 0.1, delay: 0.1, options: .beginFromCurrentState, animations: {
-                self.tableView.setContentOffset(CGPoint.init(x: 0, y: -self.refreshControl.frame.size.height), animated: false)
+                self.tableView.setContentOffset(CGPoint.init(x: 0, y: self.tableView.contentOffset.y - self.refreshControl.frame.size.height), animated: false)
             }) { _ in
                 self.refreshControl.beginRefreshing()
             }
@@ -272,7 +278,7 @@ extension PageStateTableViewController {
              }
             }
             self.refreshControl.endRefreshing()
-            self.tableView.contentOffset.x = -self.tableView.contentInset.top
+        self.tableView.contentOffset.y = -self.tableView.contentInset.top
         if pageState == .noMore {
             self.footerActivityIndicatorView.stopAnimating()
             self.tableView.contentInset.bottom = 0

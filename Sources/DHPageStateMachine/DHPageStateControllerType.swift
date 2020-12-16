@@ -20,6 +20,8 @@ public protocol DHPageStateControllerType {
 
     associatedtype ViewModel: DHPageStateViewModelType where ViewModel.T == T
 
+    var authIgnore: Bool { get }
+
     var beginRefreshList: PublishRelay<Void> { get }
 
     var viewModel: ViewModel { get }
@@ -37,10 +39,15 @@ public protocol DHPageStateControllerType {
 }
 // TODO: - Need auth check
 extension DHPageStateControllerType {
-    public var refresh: Observable<Void> {
+    var authIgnore: Bool {
+        true
+    }
+
+    var refresh: Observable<Void> {
         beginRefreshList
         .asObservable()
         .share()
+        .filter({ authIgnore })
     }
 }
 

@@ -69,7 +69,7 @@ open class DHPageStateMachine: DHPageStateMachineType {
         open
     }
 
-    fileprivate var open: Bool = true
+    fileprivate var open: Bool = false
 
     public private(set) var state: DHPageState = .initial
 
