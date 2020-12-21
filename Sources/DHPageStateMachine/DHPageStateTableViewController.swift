@@ -10,7 +10,6 @@ import RxSwift
 import RxCocoa
 
 protocol DHPageStateTableViewControllerType: UITableViewContainer, UITableViewDataSource {
-    var isRefreshingAnimatingPair: Bool { get set }
     var pageState: DHPageState { get }
     var pageStateMachine: DHPageStateMachineType { get }
     func pullToRefreshAnimating()
@@ -41,7 +40,10 @@ open class DHPageStateTableViewController<T: DHPageStateControllerType, U>: Tabl
         controller as? DHPageStateMachineOwner
     }
 
+    // System auto call pull to refresh and animating arbitrary
     public var isRefreshingAnimatingPair: Bool = false
+    // User pull to refresh spontaneously
+    public var isRefreshingAnimatingUserPullPair: Bool = false
 
     public var pageState: DHPageState {
         pageStateMachineOwner.pageStateMachine.state
@@ -205,7 +207,11 @@ open class DHPageStateTableViewController<T: DHPageStateControllerType, U>: Tabl
     }
 
     @objc private func fetchData() {
-        pageStateMachine.switchState(to: .loading)
+        if isRefreshingAnimatingUserPullPair { return }
+        isRefreshingAnimatingUserPullPair = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            self.pageStateMachine.switchState(to: .loading)
+        }
     }
 
     open func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -268,21 +274,24 @@ extension DHPageStateTableViewController {
         }
     }
 
-    public func stopAnimating() {
+    func stopAnimating() {
         if isRefreshingAnimatingPair {
             self.isRefreshingAnimatingPair = false
             UIView.animate(withDuration: 0.3, delay: 0.0, options: .beginFromCurrentState, animations: {
             self.tableView.setContentOffset(CGPoint(x: 0, y: -self.tableView.contentInset.top), animated: false)
              }) { _ in
                  self.refreshControl.endRefreshing()
-             }
             }
+        }
+        if refreshControl.isRefreshing {
             self.refreshControl.endRefreshing()
-        self.tableView.contentOffset.y = -self.tableView.contentInset.top
+            self.tableView.contentOffset.y = -self.tableView.contentInset.top
+        }
         if pageState == .noMore {
             self.footerActivityIndicatorView.stopAnimating()
             self.tableView.contentInset.bottom = 0
         }
+        isRefreshingAnimatingUserPullPair = false
     }
 }
 
