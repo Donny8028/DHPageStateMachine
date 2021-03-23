@@ -1,199 +1,122 @@
 //
-//  PageStateMachine.swift
+//  File.swift
 //
-//  Created by 賢瑭 何 on 2020/9/1.
-//  Copyright © 2020 accuvally. All rights reserved.
+// 
+//  Created by 賢瑭 何 on 2020/9/21.
 //
 
 import Foundation
-import RxSwift
-import RxCocoa
 
-// Usage: Let object which conform to PageStateObserverType & PageStateMachineOwner or separate the duty on two object at a time, and implement the machine register and apply state you want to handle. Don't forget to consider the retain cycle.
-
-// MARK: - Observer
-public protocol DHPageStateObserverType: class {
-    var pageStateMachineOwner: DHPageStateMachineOwner! { get }
+public protocol DHPageStateMachineObserverType: AnyObject {
+    func applyAnyStateWillSwitch(to new: DHPageState, from old: DHPageState)
+    func applyAnyStateDidSwitch(to new: DHPageState, from old: DHPageState)
 }
 
-public protocol DHPageStateMachineOwner {
-    var pageStateMachine: DHPageStateMachineType { get }
-}
+open class DHPageStateMachine {
 
-// MARK: - Oberservee
-public protocol DHPageStateMachineType {
-    typealias StateHandler = (DHPageState) -> Void
-    var isOpen: Bool { get }
-    var state: DHPageState { get }
-    var error: Error? { get }
-    func register(pageStateObserver: DHPageStateObserverType)
-    func switchState(to state: DHPageState)
-    func apply(switchTo state: DHPageState, handler: @escaping StateHandler)
-    func applyAnyStateWillSwitch(handler: @escaping StateHandler)
-    func applyAnyStateDidSwitch(handler: @escaping StateHandler)
-    func start()
-    func open()
-    func shutdown(error: Error?)
-}
+    var reachability: Bool = true
 
-extension DHPageStateMachineType {
-    public var asConcrete: DHPageStateMachine {
-        self as! DHPageStateMachine
-    }
-}
+    private var observers: [DHPageStateMachineObserverType] = []
 
-extension DHPageStateMachineType where Self: DHPageStateMachine {
-    public func open() {
-        open = true
-    }
-    /**
-        If you give and error, and the machine will switch to error state and stop receiving any state until you call open()
-    */
-    public func shutdown(error: Error? = nil) {
-        if let err = error {
-            switchState(to: DHPageState(pageState: .error(err)))
+    public private(set) var state: DHPageState = .initial {
+        willSet {
+            observers.forEach({
+                $0.applyAnyStateWillSwitch(to: newValue, from: state)
+            })
         }
-        open = false
-    }
-}
-
-open class DHPageStateMachine: DHPageStateMachineType {
-
-    private var handlers: [DHPageState: StateHandler] = [:]
-
-    public var error: Error? {
-        self.state.error
-    }
-
-    public var isOpen: Bool {
-        open
-    }
-
-    fileprivate var open: Bool = false
-
-    public private(set) var state: DHPageState = .initial
-
-    private var beforeAnyStateSwitch: StateHandler?
-    private var afterAnyStateSwitch: StateHandler?
-
-    init() {
-    }
-
-    public weak var observer: DHPageStateObserverType?
-
-    public func register(pageStateObserver: DHPageStateObserverType) {
-        self.observer = pageStateObserver
-    }
-
-    public func switchState(to state: DHPageState) {
-        if open {
-            DispatchQueue.main.async {
-                if self.state == state { return }
-                self.beforeAnyStateSwitch?(state)
-                self.state = state
-                self.handlers[state]?(state)
-                self.afterAnyStateSwitch?(state)
-            }
+        didSet {
+            observers.forEach({
+                $0.applyAnyStateDidSwitch(to: state, from: oldValue)
+            })
         }
     }
 
-    public func applyAnyStateWillSwitch(handler: @escaping StateHandler) {
-        self.beforeAnyStateSwitch = nil
-        self.beforeAnyStateSwitch = handler
+    private var isNoMore: Bool = false
+
+    var pageStateAPIWorker: DHPageStateAPIWorkerType
+
+    public init(pageStateAPIWorker: DHPageStateAPIWorker) {
+        self.pageStateAPIWorker = pageStateAPIWorker
+        pageStateAPIWorker.delegate = self
     }
 
-    public func apply(switchTo state: DHPageState, handler: @escaping StateHandler) {
-        handlers[state] = nil
-        handlers[state] = handler
+    public func subscribe<T: DHPageStateMachineObserverType>(_ pageStateObserver: T) {
+        self.observers.append(WeakPageStateObserver(pageStateObserver))
     }
 
-    public func applyAnyStateDidSwitch(handler: @escaping StateHandler) {
-        self.afterAnyStateSwitch = nil
-        self.afterAnyStateSwitch = handler
-    }
-
-    public func start() {
-        open = true
-        switchState(to: .initialLoading)
-    }
-}
-
-// Empty -> Empty values
-// Loading -> Empty values
-// Initial -> Empty values
-// InitialLoading -> Empty values
-// LoadingMore -> existing values + new values
-// Error -> existing values
-// Finish -> existing values
-public struct DHPageState: CustomStringConvertible, Hashable {
-
-    public static let initial = DHPageState(pageState: .initial)
-    public static let initialLoading = DHPageState(pageState: .initialLoading)
-    public static let loadingMore = DHPageState(pageState: .loadingMore)
-    public static let loading = DHPageState(pageState: .loading)
-    public static let empty = DHPageState(pageState: .empty)
-    public static let finish = DHPageState(pageState: .finish)
-    public static let noMore = DHPageState(pageState: .noMore)
-    public static let error = DHPageState(pageState: .error(nil))
-
-    public let error: Error?
-
-    public let state: DHPageStateOption
-
-    init(pageState: DHPageStateOption) {
-        self.state = pageState
-        if case .error(let error) = pageState {
-            self.error = error
-        } else {
-            error = nil
-        }
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(description)
-    }
-
-    public static func == (lhs: DHPageState, rhs: DHPageState) -> Bool {
-        "\(lhs.description)" == "\(rhs.description)"
-    }
-
-    public var description: String {
-        var identifier = ""
-        switch state {
-        case .initial:
-            identifier = "initial"
-        case .initialLoading:
-            identifier = "initialLoading"
-        case .loadingMore:
-            identifier = "loadingMore"
-        case .loading:
-            identifier = "loading"
-        case .empty:
-            identifier = "empty"
-        case .finish:
-            identifier = "finish"
-        case .noMore:
-            identifier = "noMore"
-        case .error(_):
-            identifier = "error"
-        }
-        return identifier
-    }
-
-    public enum DHPageStateOption {
-
-        case initial, initialLoading, loadingMore, loading, empty, finish, noMore, error(Error?)
-    }
-}
-
-extension DHPageStateMachine: ReactiveCompatible {
-
-}
-
-extension Reactive where Base: DHPageStateMachine {
-    var state: Binder<DHPageState> {
-        Binder(self.base, scheduler: MainScheduler.instance, binding: { (machine, state) in
-            machine.switchState(to: state)
+    public func unsubscribe<T: DHPageStateMachineObserverType>(_ object: T) {
+        self.observers.removeAll(where: {
+            ($0 as? WeakPageStateObserver<T>)?.object === object
         })
+    }
+
+    public func refresh() {
+        switchState(to: .loading)
+        pageStateAPIWorker.getFirstLoad()
+    }
+
+    public func startLoading() {
+        switchState(to: .initialLoading)
+        pageStateAPIWorker.getFirstLoad()
+    }
+
+    public func loadMore() {
+        guard !pageStateAPIWorker.isOneTimeLoad else {
+            isNoMore = true
+            switchState(to: .noMore)
+            return
+        }
+        if isNoMore {
+            switchState(to: .noMore)
+            return
+        }
+        switchState(to: .loadingMore)
+        pageStateAPIWorker.getMoreLoad()
+    }
+
+    private func switchState(to state: DHPageState) {
+//        DispatchQueue.main.async {
+        if self.state == state { return }
+        self.state = state
+//        }
+    }
+}
+
+extension DHPageStateMachine: DHPageStateAPIWorkerDelegate {
+    public func firstLoadDidFinish(data: Codable & ListDataType) {
+        let isEmpty: Bool = data.isEmpty
+        let state = isEmpty ? DHPageState.empty : DHPageState.finish(data)
+        switchState(to: state)
+        isNoMore = !data.isHasMore
+    }
+
+    public func loadingMoreDidFinish(data: Codable & ListDataType) {
+        // This data is not merge from old data list
+        switchState(to: .finish(data))
+        isNoMore = !data.isHasMore
+    }
+
+    public func firstLoadDataFails(error: Error) {
+        // Check if no network
+        if !reachability {
+            switchState(to: .error(.noNetwork))
+            return
+        }
+        switchState(to: .error(.wrapper(error)))
+    }
+
+    public func loadingMoreDataFails(error: Error) {
+        if !reachability {
+            switchState(to: .error(.noNetwork))
+            return
+        }
+        switchState(to: .error(.wrapper(error)))
+    }
+}
+
+extension DHPageStateMachine {
+    // control point
+    func set_has_more(_ state: Bool) {
+        self.isNoMore = state
     }
 }
