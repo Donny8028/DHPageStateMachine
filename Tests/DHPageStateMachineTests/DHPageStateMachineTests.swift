@@ -283,35 +283,6 @@ class DHPageStateMachineTests: XCTestCase {
 
         XCTAssertTrue(sut?.state == .noMore, "Old state should be no more")
     }
-
-    func test_load_no_network_error() {
-        let stateAPIServiceStub = DHPageStateAPIServiceFailureStub()
-        stateAPIServiceStub.reachabilityError = true
-        let pageStateAPIWorker = DHPageStateAPIWorker(pageStateAPIServiceType: stateAPIServiceStub, config: .default)
-        sut = DHPageStateMachine(pageStateAPIWorker: pageStateAPIWorker)
-        let observer = DHPageStateMachineObserverTypeSpy()
-        sut?.subscribe(observer)
-        sut?.reachability = false
-
-        sut?.loadMore()
-
-        XCTAssertTrue(observer.oldState == .loadingMore, "Old state should be loading")
-
-        guard let willSetState = observer.willChangeState else {
-            XCTFail("State should be set")
-            return
-        }
-
-        if case DHPageState.error(let error) = willSetState {
-            switch error {
-            case .noNetwork: break
-            default:
-                XCTFail("Error should be noNetwork")
-            }
-        } else {
-            XCTFail("State should be error")
-        }
-    }
 }
 
 extension DHPageStateMachineTests {
@@ -341,15 +312,13 @@ extension DHPageStateMachineTests {
 
     class DHPageStateAPIServiceFailureStub: DHPageStateAPIServiceType {
 
-        var reachabilityError: Bool = false
-
         func getFirstLoad(resultHandler: @escaping ResultHandler) {
-            let error = reachabilityError ? DHPageState.DHPageSateError.noNetwork : DHPageState.DHPageSateError.wrapper(NSError(domain: "test_error", code: 0, userInfo: nil))
+            let error = DHPageState.DHPageSateError.wrapper(NSError(domain: "test_error", code: 0, userInfo: nil))
             resultHandler(.failure(error))
         }
 
         func getMoreLoad(resultHandler: @escaping ResultHandler) {
-            let error = reachabilityError ? DHPageState.DHPageSateError.noNetwork : DHPageState.DHPageSateError.wrapper(NSError(domain: "test_error", code: 0, userInfo: nil))
+            let error = DHPageState.DHPageSateError.wrapper(NSError(domain: "test_error", code: 0, userInfo: nil))
             resultHandler(.failure(error))
         }
     }

@@ -33,7 +33,7 @@ open class DHPageStateMachine {
 
     private var isNoMore: Bool = false
 
-    var pageStateAPIWorker: DHPageStateAPIWorkerType
+    public var pageStateAPIWorker: DHPageStateAPIWorkerType
 
     public init(pageStateAPIWorker: DHPageStateAPIWorker) {
         self.pageStateAPIWorker = pageStateAPIWorker
@@ -75,10 +75,8 @@ open class DHPageStateMachine {
     }
 
     private func switchState(to state: DHPageState) {
-//        DispatchQueue.main.async {
         if self.state == state { return }
         self.state = state
-//        }
     }
 }
 

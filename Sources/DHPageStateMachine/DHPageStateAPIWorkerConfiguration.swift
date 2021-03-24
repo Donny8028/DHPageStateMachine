@@ -14,5 +14,5 @@ public struct DHPageStateAPIWorkerConfiguration {
     let oneTimeLoad: Bool
     let pageBase: PageBase
 
-    static let `default`: DHPageStateAPIWorkerConfiguration = .init(oneTimeLoad: false, pageBase: .zero)
+    public static let `default`: DHPageStateAPIWorkerConfiguration = .init(oneTimeLoad: false, pageBase: .zero)
 }

@@ -9,6 +9,11 @@ import Foundation
 
 public typealias PageModel = Codable & ListDataType
 
+public protocol ListDataType {
+    var isHasMore: Bool { get set }
+    var isEmpty: Bool { get }
+}
+
 public protocol DHPageStateAPIWorkerDelegate: class {
     func firstLoadDidFinish(data: PageModel)
     func loadingMoreDidFinish(data: PageModel)
@@ -22,7 +27,7 @@ public protocol DHPageStateAPIServiceType: class {
     func getMoreLoad(resultHandler: @escaping ResultHandler)
 }
 
-protocol DHPageStateAPIWorkerType: class {
+public protocol DHPageStateAPIWorkerType: class {
     func getFirstLoad()
     func getMoreLoad()
     var isOneTimeLoad: Bool { get }
@@ -34,17 +39,17 @@ public class DHPageStateAPIWorker: DHPageStateAPIWorkerType {
 
     private var loadingMoreTime: Int = 0
 
-    var currentPage: Int {
+    public var currentPage: Int {
         loadingMoreTime + (pageBase == .zero ? 0 : 1)
     }
 
-    weak var delegate: DHPageStateAPIWorkerDelegate?
+    public weak var delegate: DHPageStateAPIWorkerDelegate?
 
     private var config: DHPageStateAPIWorkerConfiguration
 
     private let pageStateAPIServiceType: DHPageStateAPIServiceType
 
-    var isOneTimeLoad: Bool {
+    public var isOneTimeLoad: Bool {
         config.oneTimeLoad
     }
 
@@ -57,7 +62,7 @@ public class DHPageStateAPIWorker: DHPageStateAPIWorkerType {
         self.config = config
     }
 
-    func getFirstLoad() {
+    public func getFirstLoad() {
         pageStateAPIServiceType.getFirstLoad(resultHandler: { [weak self] result in
             switch result {
             case .success(let data):
@@ -69,7 +74,7 @@ public class DHPageStateAPIWorker: DHPageStateAPIWorkerType {
         })
     }
 
-    func getMoreLoad() {
+    public func getMoreLoad() {
         pageStateAPIServiceType.getMoreLoad(resultHandler: { [weak self] result in
             switch result {
             case .success(let data):
@@ -80,9 +85,4 @@ public class DHPageStateAPIWorker: DHPageStateAPIWorkerType {
             }
         })
     }
-}
-
-public protocol ListDataType {
-    var isHasMore: Bool { get set }
-    var isEmpty: Bool { get }
 }
