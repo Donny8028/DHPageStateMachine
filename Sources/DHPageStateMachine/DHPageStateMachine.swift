@@ -14,8 +14,6 @@ public protocol DHPageStateMachineObserverType: AnyObject {
 
 open class DHPageStateMachine {
 
-    var reachability: Bool = true
-
     private var observers: [DHPageStateMachineObserverType] = []
 
     public private(set) var state: DHPageState = .initial {
@@ -96,18 +94,10 @@ extension DHPageStateMachine: DHPageStateAPIWorkerDelegate {
 
     public func firstLoadDataFails(error: Error) {
         // Check if no network
-        if !reachability {
-            switchState(to: .error(.noNetwork))
-            return
-        }
         switchState(to: .error(.wrapper(error)))
     }
 
     public func loadingMoreDataFails(error: Error) {
-        if !reachability {
-            switchState(to: .error(.noNetwork))
-            return
-        }
         switchState(to: .error(.wrapper(error)))
     }
 }

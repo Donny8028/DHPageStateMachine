@@ -37,8 +37,8 @@ public enum DHPageState: CustomStringConvertible, Equatable {
         }
         return identifier
     }
+
     public enum DHPageSateError: Error {
-        case noNetwork
         case wrapper(Error)
     }
 }
