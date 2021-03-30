@@ -82,14 +82,14 @@ extension DHPageStateMachine: DHPageStateAPIWorkerDelegate {
     public func firstLoadDidFinish(data: Codable & ListDataType) {
         let isEmpty: Bool = data.isEmpty
         let state = isEmpty ? DHPageState.empty : DHPageState.finish(data)
-        switchState(to: state)
         isNoMore = !data.isHasMore
+        switchState(to: state)
     }
 
     public func loadingMoreDidFinish(data: Codable & ListDataType) {
         // This data is not merge from old data list
-        switchState(to: .finish(data))
         isNoMore = !data.isHasMore
+        switchState(to: .finish(data))
     }
 
     public func firstLoadDataFails(error: Error) {

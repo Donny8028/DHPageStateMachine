@@ -66,8 +66,8 @@ public class DHPageStateAPIWorker: DHPageStateAPIWorkerType {
         pageStateAPIServiceType.getFirstLoad(resultHandler: { [weak self] result in
             switch result {
             case .success(let data):
-                self?.delegate?.firstLoadDidFinish(data: data)
                 self?.loadingMoreTime = 0
+                self?.delegate?.firstLoadDidFinish(data: data)
             case .failure(let error):
                 self?.delegate?.firstLoadDataFails(error: error)
             }
@@ -78,8 +78,8 @@ public class DHPageStateAPIWorker: DHPageStateAPIWorkerType {
         pageStateAPIServiceType.getMoreLoad(resultHandler: { [weak self] result in
             switch result {
             case .success(let data):
-                self?.delegate?.loadingMoreDidFinish(data: data)
                 self?.loadingMoreTime += 1
+                self?.delegate?.loadingMoreDidFinish(data: data)
             case .failure(let error):
                 self?.delegate?.loadingMoreDataFails(error: error)
             }
